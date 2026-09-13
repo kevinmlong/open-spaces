@@ -102,6 +102,20 @@ export const useSessionStore = defineStore('session', () => {
     apply(Array.isArray(data) ? data[0] : data)
   }
 
+  /**
+   * Destructive, unlike archive: the data is gone. Scope is one of
+   * 'schedule' | 'votes' | 'topics' | 'all'.
+   */
+  async function reset(scope) {
+    const { data, error } = await supabase.rpc('reset_session', {
+      p_session: sessionId.value,
+      p_scope: scope,
+    })
+    if (error) throw error
+    apply(Array.isArray(data) ? data[0] : data)
+    return row.value
+  }
+
   async function archiveAndStartNew(name) {
     const { data, error } = await supabase.rpc('archive_session', { p_new_name: name })
     if (error) throw error
@@ -131,6 +145,7 @@ export const useSessionStore = defineStore('session', () => {
     pollStats,
     setPhase,
     extendDeadline,
+    reset,
     archiveAndStartNew,
   }
 })

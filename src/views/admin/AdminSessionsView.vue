@@ -16,7 +16,39 @@ const { resync } = useSessionChannel()
 const past = ref([])
 const newName = ref('')
 const confirming = ref(false)
+const resetting = ref(null)
 const error = ref(null)
+
+/**
+ * Ordered least to most destructive. Each says exactly what disappears, because
+ * unlike merge and remove -- which are soft and reversible -- these delete.
+ */
+const RESET_SCOPES = [
+  {
+    scope: 'schedule',
+    label: 'Clear the schedule',
+    blurb: 'Removes the generated round/room grid. Votes and topics are kept, so you can regenerate with different numbers.',
+    lands: 'voting closed',
+  },
+  {
+    scope: 'votes',
+    label: 'Clear all votes',
+    blurb: 'Deletes every ballot and resets the tallies to zero. Topics are kept, and everyone can vote again from scratch.',
+    lands: 'proposals closed',
+  },
+  {
+    scope: 'topics',
+    label: 'Clear all topics',
+    blurb: 'Deletes every proposed topic, and with them the votes and the schedule.',
+    lands: 'proposals open',
+  },
+  {
+    scope: 'all',
+    label: 'Reset everything',
+    blurb: 'Empties the session completely — topics, votes and schedule — and returns it to the holding screen.',
+    lands: 'draft',
+  },
+]
 
 async function loadPast() {
   const { data } = await supabase
@@ -25,6 +57,19 @@ async function loadPast() {
     .not('archived_at', 'is', null)
     .order('archived_at', { ascending: false })
   past.value = data ?? []
+}
+
+async function doReset() {
+  const item = resetting.value
+  resetting.value = null
+  error.value = null
+  try {
+    await session.reset(item.scope)
+    await topics.fetch()
+    await resync()
+  } catch (e) {
+    error.value = e
+  }
 }
 
 async function archive() {
@@ -78,6 +123,39 @@ onMounted(loadPast)
         </div>
       </section>
 
+      <!--
+        Kept visually distinct and below archiving: archiving is the safe,
+        lossless way to start again, and should be the obvious first choice.
+      -->
+      <section class="rounded-xl border-2 border-pink/30 bg-white p-5 shadow-sm">
+        <h3 class="font-bold text-pink">Reset this session</h3>
+        <p class="mt-1 text-sm text-slate-600">
+          These <strong>delete data permanently</strong> — there is no undo, and nothing is kept
+          the way archiving keeps it. Useful for rehearsals, or for putting the session back a
+          step if something went wrong live.
+        </p>
+
+        <ul class="mt-4 space-y-2">
+          <li
+            v-for="item in RESET_SCOPES"
+            :key="item.scope"
+            class="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 p-3"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold text-navy">{{ item.label }}</p>
+              <p class="text-xs text-slate-500">{{ item.blurb }}</p>
+            </div>
+            <span class="shrink-0 text-xs text-slate-400">→ {{ item.lands }}</span>
+            <button
+              class="shrink-0 rounded-lg border border-pink px-3 py-1.5 text-xs font-semibold text-pink hover:bg-pink/10"
+              @click="resetting = item"
+            >
+              {{ item.label }}
+            </button>
+          </li>
+        </ul>
+      </section>
+
       <section v-if="past.length">
         <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
           Archived sessions
@@ -95,6 +173,17 @@ onMounted(loadPast)
     </main>
 
     <!-- The one genuinely irreversible action, so it asks you to type the name. -->
+    <ConfirmDialog
+      :open="!!resetting"
+      :title="resetting?.label"
+      :body="`${resetting?.blurb} This cannot be undone. The session will be left at: ${resetting?.lands}.`"
+      :confirm-label="resetting?.label"
+      danger
+      :type-to-confirm="resetting?.scope === 'all' ? session.row?.name : null"
+      @confirm="doReset"
+      @cancel="resetting = null"
+    />
+
     <ConfirmDialog
       :open="confirming"
       title="Archive this session"

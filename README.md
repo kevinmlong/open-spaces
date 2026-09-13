@@ -220,6 +220,33 @@ read large and sparse, forty pack into four tighter columns. That maths lives in
 `src/lib/wall.js` and is unit-tested, including the invariant that the hero
 always outsizes a wall item of the same length so the two never compete.
 
+### Reset vs archive
+
+Two ways to start again, and they are not interchangeable:
+
+**Archive** (`/admin/sessions`) is the one for the event. It freezes the current
+session and opens a fresh one; nothing is lost, day 1 stays queryable, and every
+screen in the room follows across. This is what you use between day 1 and day 2.
+
+**Reset** genuinely **deletes**, with no undo. It exists for rehearsals — where
+archiving after every run piles up junk sessions — and for recovery, when
+something went wrong live and you need to put the session back a step:
+
+| Scope | Deletes | Keeps | Lands at |
+|---|---|---|---|
+| Clear the schedule | the round/room grid | votes, topics | voting closed |
+| Clear all votes | ballots + tallies | topics | proposals closed |
+| Clear all topics | topics, votes, grid | — | proposals open |
+| Reset everything | everything | — | draft |
+
+Reset deliberately bypasses the `set_phase` transition matrix — rewinding from
+`voting_open` back to `proposals_open` is exactly the move the matrix forbids in
+normal operation, and exactly what recovery needs. It also clears any lapsed
+deadline, so a rewound session doesn't land straight back on "Time's Up!".
+
+Every reset is recorded in `session_events` with a count of what it destroyed.
+That row is the only trace left, so it is worth having.
+
 ### Archiving hands the whole room over
 
 When the organizer archives day 1 and starts day 2, every screen has to follow.

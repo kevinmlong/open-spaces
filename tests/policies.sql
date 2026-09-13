@@ -378,6 +378,107 @@ begin
   raise notice 'PASS: merge moves votes without inflating, and unmerges cleanly';
 end $$;
 
+\echo '=== 7b. reset_session ==='
+
+-- Non-admins must not be able to wipe the room's work.
+do $$
+declare denied boolean := false;
+begin
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  begin
+    perform public.reset_session(public.active_session_id(), 'all');
+  exception when insufficient_privilege then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: attendee reset the session'; end if;
+  raise notice 'PASS: attendee cannot reset a session';
+end $$;
+
+-- 'schedule' drops the grid and nothing else.
+do $$
+declare v uuid; votes_before int; n int;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  select count(*) into votes_before from public.votes where session_id = v;
+
+  perform public.reset_session(v, 'schedule');
+
+  select count(*) into n from public.assignments where session_id = v;
+  if n <> 0 then raise exception 'FAIL: % assignments survived', n; end if;
+  select count(*) into n from public.votes where session_id = v;
+  if n <> votes_before then raise exception 'FAIL: schedule reset ate votes (% -> %)', votes_before, n; end if;
+  if (select phase from public.sessions where id = v) <> 'voting_closed' then
+    raise exception 'FAIL: phase not rewound to voting_closed';
+  end if;
+  raise notice 'PASS: reset schedule drops the grid, keeps the votes';
+end $$;
+
+-- 'votes' clears ballots and zeroes the tallies, keeping the topics.
+do $$
+declare v uuid; topics_before int; n int;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  select count(*) into topics_before from public.topics where session_id = v;
+
+  perform public.reset_session(v, 'votes');
+
+  select count(*) into n from public.votes where session_id = v;
+  if n <> 0 then raise exception 'FAIL: % votes survived', n; end if;
+  select count(*) into n from public.ballots where session_id = v;
+  if n <> 0 then raise exception 'FAIL: % ballots survived -- people could not vote again', n; end if;
+  select coalesce(max(votes), 0) into n from public.topic_vote_counts where session_id = v;
+  if n <> 0 then raise exception 'FAIL: a stale tally of % survived', n; end if;
+  select count(*) into n from public.topics where session_id = v;
+  if n <> topics_before then raise exception 'FAIL: vote reset ate topics (% -> %)', topics_before, n; end if;
+  raise notice 'PASS: reset votes clears ballots and tallies, keeps the topics';
+end $$;
+
+-- After a vote reset the same person must be able to vote again.
+do $$
+declare v uuid; ids uuid[];
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  perform public.set_phase(v, 'voting_open', 5);
+  select array_agg(id) into ids from (
+    select id from public.topics where status='active' order by created_at limit 2) x;
+
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  perform public.cast_ballot(ids);
+  raise notice 'PASS: a voter who was cleared can cast a fresh ballot';
+end $$;
+
+-- 'all' empties the session and rewinds it to draft.
+do $$
+declare v uuid; n int;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  perform public.reset_session(v, 'all');
+
+  select count(*) into n from public.topics where session_id = v;
+  if n <> 0 then raise exception 'FAIL: % topics survived a full reset', n; end if;
+  if (select phase from public.sessions where id = v) <> 'draft' then
+    raise exception 'FAIL: full reset did not return to draft';
+  end if;
+  if (select proposals_deadline from public.sessions where id = v) is not null then
+    raise exception 'FAIL: a lapsed deadline survived -- the room would land on Time''s Up';
+  end if;
+  raise notice 'PASS: reset all empties the session and returns it to draft';
+end $$;
+
+-- The audit trail must record what was destroyed.
+do $$
+declare d jsonb;
+begin
+  perform pg_temp.be_admin();
+  select detail into d from public.session_events
+   where detail ->> 'action' = 'reset' order by created_at desc limit 1;
+  if d is null then raise exception 'FAIL: no reset recorded in session_events'; end if;
+  raise notice 'PASS: reset is recorded (scope %, % topics destroyed)', d->>'scope', d->>'topics';
+end $$;
+
 \echo '=== 8. only one active session ==='
 
 do $$
@@ -395,8 +496,14 @@ end $$;
 do $$
 declare old_id uuid; new_id uuid; kept int;
 begin
-  select id into old_id from public.sessions where archived_at is null;
   perform pg_temp.be_admin();
+  select id into old_id from public.sessions where archived_at is null;
+
+  -- Seed our own row rather than relying on what earlier blocks left behind:
+  -- the reset cases above deliberately empty the session.
+  insert into public.topics (session_id, title, source)
+  values (old_id, 'Topic that must survive archiving', 'mic');
+
   select id into new_id from public.archive_session('Day 2 Open Spaces');
 
   if new_id = old_id then raise exception 'FAIL: archive did not create a new session'; end if;
