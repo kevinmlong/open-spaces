@@ -266,11 +266,19 @@ means a short card gets small text, a narrow card gets small text, and a card
 with room in both directions gets large text — without anything needing to know
 which layout it is in.
 
-The container handles the box; it cannot know what goes in it, so a small
-content-aware factor (`src/lib/titleScale.js`) steps long titles down. In a
-narrow overview column an 80-character title wraps to four lines and spills out
-of a card a short title fills comfortably. Long titles shrink rather than being
-clipped or truncated, so every word stays readable from the back of the room.
+CSS cannot see how many lines the text wrapped to, so `v-fit-text`
+(`src/composables/useFitText.js`) measures each card and shrinks any title that
+would otherwise fill it edge to edge, targeting 80% of the available height.
+
+This replaced a title-length heuristic, which could not know the column width
+and got it wrong in both directions: at three rounds a 42-character title fits on
+one line and was being shrunk for nothing, while at four rounds a 30-character
+title wrapped and was not. Titles shrink rather than being clipped or truncated,
+so every word stays readable from the back of the room.
+
+The **room label is deliberately outside** all of this — fixed size, fixed
+position, top of every card. It is what an attendee scans down a column for, so
+it must not move or resize because a neighbouring title happened to be long.
 
 Padding scales per axis — vertical against the card's height, horizontal against
 its width — because one value for all four sides looked starved sideways: 11px

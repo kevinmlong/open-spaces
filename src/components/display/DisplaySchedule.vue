@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import { useResultsStore } from '@/stores/results'
 import { roomName, roundLabel } from '@/lib/schedule'
-import { titleScale } from '@/lib/titleScale'
+import { vFitText } from '@/composables/useFitText'
 
 /**
  * The schedule on the projector, in the same dark palette as the proposal and
@@ -17,15 +17,21 @@ import { titleScale } from '@/lib/titleScale'
  * FILLING THE SCREEN: every card is `flex-1`, so the rooms divide whatever
  * height is left and the screen is always full.
  *
- * SIZING THE TYPE: each card is a size container, and the text is measured in
- * `cqh`/`cqw` -- percentages of the card itself. This replaced a lookup table
- * keyed on the room count, which could only guess: it knew four rooms meant
- * shortish cards, but not that an overview column is a third of the width, so
- * the same guess was too small in one layout and too big in the other. Taking
- * the smaller of a height-derived and a width-derived size means a card that is
- * short gets small text, a card that is narrow gets small text, and a card with
- * room in both directions gets large text -- without anything having to know
- * which layout it is in.
+ * SIZING THE TYPE: each card is a size container, and the title is measured in
+ * `cqh`/`cqw` -- percentages of the card itself. Taking the smaller of a
+ * height-derived and a width-derived size means a short card gets small text, a
+ * narrow card gets small text, and a card with room in both gets large text,
+ * without anything needing to know which layout it is in.
+ *
+ * CSS cannot see how many lines the text wrapped to, though, so `v-fit-text`
+ * measures and shrinks anything that would otherwise fill its card edge to edge.
+ * That replaced a title-length heuristic, which could not know the column width:
+ * at three rounds a 42-character title fits on one line and was being shrunk for
+ * nothing, while at four rounds a 30-character title wrapped and was not.
+ *
+ * The room label sits outside all of that on purpose: same size, same place, top
+ * of every card. It is what an attendee scans down a column for, so it must not
+ * move or resize because a neighbouring title happened to be long.
  */
 const session = useSessionStore()
 const results = useResultsStore()
@@ -47,20 +53,19 @@ function cell(round, room) {
       <div
         v-for="m in rooms"
         :key="m"
+        v-fit-text
         class="sched-card min-h-0 flex-1 overflow-hidden rounded-2xl bg-white/10"
       >
-        <div class="sched-inner flex h-full flex-col justify-center">
-          <p class="sched-room font-semibold tracking-wide text-light-pink uppercase">
+        <div data-fit-inner class="sched-inner flex h-full flex-col">
+          <p class="sched-room shrink-0 font-semibold tracking-wide text-light-pink uppercase">
             {{ roomName(session.row, m - 1) }}
           </p>
-          <p
-            v-if="cell(focused, m - 1)"
-            class="sched-title font-semibold text-white"
-            :style="{ '--len': titleScale(cell(focused, m - 1).topics?.title) }"
-          >
-            {{ cell(focused, m - 1).topics?.title }}
-          </p>
-          <p v-else class="sched-title italic text-white/40">open — grab it</p>
+          <div data-fit-box class="flex min-h-0 flex-1 items-center">
+            <p v-if="cell(focused, m - 1)" class="sched-title font-semibold text-white">
+              {{ cell(focused, m - 1).topics?.title }}
+            </p>
+            <p v-else class="sched-title italic text-white/40">open — grab it</p>
+          </div>
         </div>
       </div>
     </div>
@@ -80,20 +85,19 @@ function cell(round, room) {
       <div
         v-for="m in rooms"
         :key="m"
+        v-fit-text
         class="sched-card min-h-0 flex-1 overflow-hidden rounded-2xl bg-white/10"
       >
-        <div class="sched-inner flex h-full flex-col justify-center">
-          <p class="sched-room font-semibold tracking-wide text-light-pink uppercase">
+        <div data-fit-inner class="sched-inner flex h-full flex-col">
+          <p class="sched-room shrink-0 font-semibold tracking-wide text-light-pink uppercase">
             {{ roomName(session.row, m - 1) }}
           </p>
-          <p
-            v-if="cell(r - 1, m - 1)"
-            class="sched-title font-semibold text-white"
-            :style="{ '--len': titleScale(cell(r - 1, m - 1).topics?.title) }"
-          >
-            {{ cell(r - 1, m - 1).topics?.title }}
-          </p>
-          <p v-else class="sched-title italic text-white/40">open — grab it</p>
+          <div data-fit-box class="flex min-h-0 flex-1 items-center">
+            <p v-if="cell(r - 1, m - 1)" class="sched-title font-semibold text-white">
+              {{ cell(r - 1, m - 1).topics?.title }}
+            </p>
+            <p v-else class="sched-title italic text-white/40">open — grab it</p>
+          </div>
         </div>
       </div>
     </div>
@@ -116,40 +120,33 @@ function cell(round, room) {
  * the container itself would be defined in terms of a box its own value
  * determines. On a child it is simply a percentage of the card.
  *
- * Vertical padding scales with the card's height, horizontal with its width --
- * each axis against the dimension it actually sits in. A single value for all
- * four sides looked starved horizontally: 11px of side inset on a 600px-wide
- * card reads as cramped even though the same 11px is generous against a 134px
- * height.
- *
- * Both are consistent between the overview and the single-round view, which is
- * what was really wrong before: they differed arbitrarily (px-6 against px-10)
- * and had no vertical padding at all.
+ * Vertical scales with the card's height, horizontal with its width -- each axis
+ * against the dimension it actually sits in. One value for all four sides looked
+ * starved sideways: 11px of side inset on a 600px-wide card reads as cramped
+ * even though the same 11px is generous against a 134px height.
  */
 .sched-inner {
   padding: clamp(0.5rem, 8cqh, 1.75rem) clamp(1.25rem, 4cqw, 3rem);
 }
 
 /*
- * min() of a height-derived and a width-derived size. Whichever dimension is
- * tighter wins, so text never outgrows its box in either direction. The clamp
- * bounds keep it readable at the small end and stop a nearly-empty grid from
- * turning into a billboard.
- *
- * 30cqh is the ceiling, found by measurement rather than taste: at 34 a long
- * title wraps to a third line in the narrow overview columns and gets clipped.
- * The width term is what lets a tall, narrow card (two rooms in the overview)
- * grow past the height its own proportions would suggest, since the extra lines
- * have somewhere to go.
+ * Fixed to the card's own proportions and deliberately NOT scaled by --fit.
+ * Every room label in a column is therefore the same size in the same place,
+ * which is what makes the column scannable; one that shifted or resized because
+ * a neighbouring title was long would be much harder to read down.
  */
-.sched-title {
-  font-size: clamp(1rem, calc(min(30cqh, 8.5cqw) * var(--len, 1)), 4rem);
-  line-height: 1.15;
-  margin-top: 0.35em;
+.sched-room {
+  font-size: clamp(0.6rem, min(12cqh, 3.2cqw), 2rem);
+  line-height: 1.2;
+  margin-bottom: 0.35em;
 }
 
-.sched-room {
-  font-size: clamp(0.65rem, min(12cqh, 3.2cqw), 2rem);
-  line-height: 1.2;
+/*
+ * min() of a height-derived and a width-derived size: whichever dimension is
+ * tighter wins. --fit is layered on top by v-fit-text, and only ever shrinks.
+ */
+.sched-title {
+  font-size: clamp(0.75rem, calc(min(30cqh, 8.5cqw) * var(--fit, 1)), 4rem);
+  line-height: 1.15;
 }
 </style>
