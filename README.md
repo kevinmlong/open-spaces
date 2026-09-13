@@ -249,16 +249,33 @@ Regenerating the schedule resets the projector to the overview, so it can never
 be left pointing at a round that no longer exists.
 
 **Filling the screen.** Every card on the projector is `flex-1`, so the rooms
-divide whatever height is left and the screen is always full. CSS handles the
-height; it cannot choose a font size to match, so `src/lib/displayScale.js` picks
-one from the room count — otherwise two rooms leave half-empty boxes with small
-type marooned in them, and eight overflow. Measured across the range:
+divide whatever height is left and the screen is always full.
 
-| shape | card height | title |
+**Sizing the type.** Each card is a CSS *size container* and the text is measured
+in `cqh`/`cqw` — percentages of the card itself:
+
+```css
+font-size: clamp(1rem, min(30cqh, 9cqw), 4rem);
+```
+
+This replaced a lookup table keyed on the room count, which could only ever
+guess: it knew four rooms meant shortish cards, but not that an overview column
+is a third of the width, so one guess was too small in one layout and too big in
+the other. Taking the **smaller** of a height-derived and a width-derived size
+means a short card gets small text, a narrow card gets small text, and a card
+with room in both directions gets large text — without anything needing to know
+which layout it is in.
+
+`30cqh` is a measured ceiling, not a taste call: at 34 a long title wraps to a
+third line in the narrow overview columns and clips. Measured at 1920x1080 with
+an 84-character title, nothing clips anywhere:
+
+| shape | card | title |
 |---|---|---|
-| 3 rounds x 2 rooms, one round up | 270px | 72px |
-| 3 rounds x 4 rooms, one round up | 127px | 48px |
-| 3 rounds x 8 rooms, one round up | 56px | 30px |
+| 2 rooms, overview | 600x280px | 50px |
+| 2 rooms, one round up | 1840x270px | 64px |
+| 4 rooms, overview | 600x134px | 40px |
+| 8 rooms, overview | 600x61px | 18px |
 
 `npm run demo:schedule [rounds] [rooms] [voters]` drives a session all the way to
 a published schedule, which is the quickest way to look at any of these.
