@@ -8,6 +8,7 @@ import { useSessionChannel } from '@/composables/useSessionChannel'
 import { useCountdown } from '@/composables/useCountdown'
 import ScheduleGrid from '@/components/attendee/ScheduleGrid.vue'
 import TopicWall from '@/components/display/TopicWall.vue'
+import { publicUrl, publicHost } from '@/lib/publicUrl'
 
 const session = useSessionStore()
 const topics = useTopicsStore()
@@ -19,10 +20,9 @@ const { status, lastSyncAt } = useSessionChannel({ observePresence: true, pollSt
 const { text: countdown, urgent, expired } = useCountdown()
 
 const qr = ref(null)
-const joinHost = ref('')
+const joinHost = publicHost
 onMounted(async () => {
-  joinHost.value = window.location.host
-  qr.value = await QRCode.toDataURL(window.location.origin, {
+  qr.value = await QRCode.toDataURL(publicUrl, {
     // Generated well above its rendered size so it stays crisp on a projector,
     // which is usually scaling the page up rather than down.
     width: 720,

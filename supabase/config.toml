@@ -41,11 +41,16 @@ enabled = false
 
 [auth]
 enabled = true
-# The deployed app. This is what password-reset links point at, so it must be
-# the real origin rather than a developer's laptop. localhost stays in the
-# redirect list so local development keeps working.
-site_url = "https://dcsots-open-spaces.fly.dev"
-additional_redirect_urls = ["https://dcsots-open-spaces.fly.dev", "http://localhost:5173"]
+# The public address we hand to attendees, and what password-reset links point
+# at. The fly.dev origin stays in the redirect list because the app is still
+# reachable there (and would be the fallback if DNS misbehaved on the day);
+# localhost keeps local development working.
+site_url = "https://openspaces.dcstateofthestack.org"
+additional_redirect_urls = [
+  "https://openspaces.dcstateofthestack.org",
+  "https://dcsots-open-spaces.fly.dev",
+  "http://localhost:5173",
+]
 
 # A full day, so no token refresh is needed during a two-hour session on flaky
 # venue wifi.

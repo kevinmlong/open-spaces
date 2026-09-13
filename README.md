@@ -283,6 +283,7 @@ Then in the GitHub repo (Settings → Secrets and variables → Actions):
 | `FLY_API_TOKEN` | **secret** | the deploy token from above |
 | `VITE_SUPABASE_URL` | **variable** | `https://<project>.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | **variable** | the project's anon key |
+| `VITE_PUBLIC_URL` | **variable** | `https://openspaces.dcstateofthestack.org` |
 
 The two Supabase values are **variables, not secrets**, deliberately. Both are
 public — the anon key only carries `role: anon` and RLS is the real boundary —
@@ -299,6 +300,18 @@ so a misconfigured build fails in CI instead of serving a white screen.
 
 (`docker build` warns `SecretsUsedInArgOrEnv` for the anon key. It is a generic
 warning about build args, and is expected here: the value is public by design.)
+
+### The address on the QR code
+
+`VITE_PUBLIC_URL` pins what the projector shows, and it is deliberately **not**
+`window.location.origin`. The display laptop might be opened on the `.fly.dev`
+address, a LAN IP during a rehearsal, or localhost — and in each case the QR
+code and the "Join at" line would send the whole room somewhere that isn't the
+address on the slides. See `src/lib/publicUrl.js`.
+
+The app itself is origin-agnostic: it is static files talking to Supabase over
+HTTPS, so it works on any hostname that resolves to it. The only host-specific
+settings are this variable and Supabase's `site_url` / `additional_redirect_urls`.
 
 ### What the image does
 
