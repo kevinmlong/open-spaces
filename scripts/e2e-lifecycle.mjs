@@ -11,10 +11,8 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
-for (const line of readFileSync('.env.local','utf8').split('\n')) {
-  const m = line.match(/^([A-Z0-9_]+)=(.*)$/); if (m) process.env[m[1]] = m[2]
-}
+import { loadEnv } from './_env.mjs'
+loadEnv()
 const U = process.env.VITE_SUPABASE_URL, K = process.env.VITE_SUPABASE_ANON_KEY
 const mk = () => createClient(U, K, { auth: { persistSession: false } })
 const ok = (m) => console.log('  ✓', m)
@@ -70,6 +68,14 @@ ok('admin opened proposals')
 { const { error } = await admin.from('topics').insert({ session_id: s.id, title: 'Cutting our cloud bill in half', source: 'mic' })
   error ? bad(`mic submit: ${error.message}`) : ok('admin submitted a mic topic') }
 
+// Seed our own, rather than depending on whatever seed.sql left behind: a rerun
+// operates on the freshly archived (empty) session, and the ballot checks below
+// need at least four topics to be meaningful.
+for (const title of ['AI code review in practice', 'Code review with AI: what works',
+                     'Platform teams: still worth it?', 'What actually passes a security audit',
+                     'Do we still need a staging environment?'])
+  await admin.from('topics').insert({ session_id: s.id, title })
+
 const { data: live } = await a3.from('topics').select('id,title,source').eq('status','active')
 console.log(`  attendee sees ${live.length} live topics`)
 
@@ -91,6 +97,9 @@ ok('admin opened voting')
 
 const { data: ballotTopics } = await a1.from('topics').select('id').eq('status','active')
 const ids = ballotTopics.map(t => t.id)
+ids.length >= 4
+  ? ok(`${ids.length} topics on the ballot`)
+  : bad(`only ${ids.length} topics -- the over-limit check below would be meaningless`)
 
 { const { error } = await a1.rpc('cast_ballot', { p_topic_ids: ids.slice(0,3) })
   error ? bad(`a1 ballot: ${error.message}`) : ok('a1 cast a 3-pick ballot') }

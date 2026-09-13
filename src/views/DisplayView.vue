@@ -6,7 +6,7 @@ import { useTopicsStore } from '@/stores/topics'
 import { useResultsStore } from '@/stores/results'
 import { useSessionChannel } from '@/composables/useSessionChannel'
 import { useCountdown } from '@/composables/useCountdown'
-import ScheduleGrid from '@/components/attendee/ScheduleGrid.vue'
+import DisplaySchedule from '@/components/display/DisplaySchedule.vue'
 import TopicWall from '@/components/display/TopicWall.vue'
 import { publicUrl, publicHost } from '@/lib/publicUrl'
 
@@ -146,10 +146,14 @@ const stale = computed(() => {
       </template>
 
       <!-- schedule -->
-      <div v-else-if="session.phase === 'scheduled'" class="min-h-0 flex-1 overflow-auto">
-        <h2 class="mb-6 text-4xl font-bold text-teal">The schedule</h2>
-        <div class="text-navy"><ScheduleGrid big /></div>
-      </div>
+      <template v-else-if="session.phase === 'scheduled'">
+        <h2 class="mb-4 shrink-0 text-3xl font-bold text-teal">
+          {{ session.row?.display_round === null || session.row?.display_round === undefined
+            ? 'The schedule'
+            : 'Up next' }}
+        </h2>
+        <DisplaySchedule />
+      </template>
 
       <!-- archived -->
       <div v-else class="flex flex-1 items-center justify-center">

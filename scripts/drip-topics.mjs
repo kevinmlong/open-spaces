@@ -14,7 +14,7 @@
  * Local only, and destructive with --fresh.
  */
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
+import { loadEnv } from './_env.mjs'
 
 for (const f of ['.env.production.local', '.env']) {
   try {

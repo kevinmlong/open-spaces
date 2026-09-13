@@ -11,10 +11,8 @@
  * pollute the counts -- presence semantics are identical either way.
  */
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
-for (const l of readFileSync('.env.local', 'utf8').split('\n')) {
-  const m = l.match(/^([A-Z0-9_]+)=(.*)$/); if (m) process.env[m[1]] = m[2]
-}
+import { loadEnv } from './_env.mjs'
+loadEnv()
 const U = process.env.VITE_SUPABASE_URL, K = process.env.VITE_SUPABASE_ANON_KEY
 const mk = () => createClient(U, K, { auth: { persistSession: false } })
 const ok = (m) => console.log('  ✓', m)

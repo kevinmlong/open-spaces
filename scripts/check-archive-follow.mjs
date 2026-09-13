@@ -11,12 +11,9 @@
  */
 import { chromium } from 'playwright'
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
+import { loadEnv } from './_env.mjs'
 
-for (const l of readFileSync('.env.local', 'utf8').split('\n')) {
-  const m = l.match(/^([A-Z0-9_]+)=(.*)$/)
-  if (m) process.env[m[1]] = m[2]
-}
+loadEnv()
 const ok = (m) => console.log('  ✓', m)
 const bad = (m) => { console.log('  ✗', m); process.exitCode = 1 }
 

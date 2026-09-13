@@ -16,7 +16,7 @@ import ErrorNote from '@/components/shared/ErrorNote.vue'
 import TopicForm from '@/components/attendee/TopicForm.vue'
 import BallotPicker from '@/components/attendee/BallotPicker.vue'
 import ResultsList from '@/components/attendee/ResultsList.vue'
-import ScheduleGrid from '@/components/attendee/ScheduleGrid.vue'
+import AttendeeSchedule from '@/components/attendee/AttendeeSchedule.vue'
 
 const session = useSessionStore()
 const topics = useTopicsStore()
@@ -137,10 +137,10 @@ const mySessions = computed(() =>
         </section>
 
         <section class="space-y-2">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">
-            Full schedule
+          <h2 class="text-sm font-semibold tracking-wide text-slate-500 uppercase">
+            Schedule
           </h2>
-          <ScheduleGrid :highlight-topic-ids="myTopicIds" />
+          <AttendeeSchedule :highlight-topic-ids="myTopicIds" />
         </section>
       </template>
 

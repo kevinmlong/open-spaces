@@ -344,6 +344,63 @@ begin
   raise notice 'PASS: spread places rank i at round i%%rounds, room i/rounds';
 end $$;
 
+\echo '=== 6b. the projector pointer is the admin''s to set ==='
+
+do $$
+declare denied boolean := false; v uuid;
+begin
+  v := public.active_session_id();
+
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  begin
+    perform public.set_display_round(v, 0::smallint);
+  exception when insufficient_privilege then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: attendee drove the projector'; end if;
+  raise notice 'PASS: attendee cannot change what the projector shows';
+end $$;
+
+do $$
+declare v uuid; denied boolean := false;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+
+  perform public.set_display_round(v, 1::smallint);
+  if (select display_round from public.sessions where id = v) <> 1 then
+    raise exception 'FAIL: display_round did not stick';
+  end if;
+
+  perform public.set_display_round(v, null);
+  if (select display_round from public.sessions where id = v) is not null then
+    raise exception 'FAIL: could not return to the overview';
+  end if;
+
+  -- Pointing at a round that was never scheduled would leave the projector
+  -- blank with no clue why.
+  begin
+    perform public.set_display_round(v, 99::smallint);
+  exception when raise_exception then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: accepted an out-of-range round'; end if;
+
+  raise notice 'PASS: admin sets a round or the overview; out-of-range is rejected';
+end $$;
+
+-- Rebuilding the grid must not leave the room pointed at a round that is gone.
+do $$
+declare v uuid;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  perform public.set_display_round(v, 2::smallint);
+  perform public.generate_schedule(v, 2, 2);
+  if (select display_round from public.sessions where id = v) is not null then
+    raise exception 'FAIL: a stale projector pointer survived regeneration';
+  end if;
+  raise notice 'PASS: regenerating the schedule resets the projector to the overview';
+end $$;
+
 \echo '=== 7. merge moves votes and is reversible ==='
 
 do $$

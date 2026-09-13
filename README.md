@@ -225,6 +225,29 @@ and there is no speed that suits both someone reading the list and someone
 waiting to see their own topic appear. The wall scrolls under human control from
 the machine driving the screen.
 
+### The schedule, and who drives the projector
+
+The schedule used to be one dense rounds x rooms table shown everywhere. That is
+unreadable on a phone, and it dropped a white table onto the projector's dark
+screen so the final stage looked like a different application.
+
+**On a phone** it is one round at a time with a round picker. The only question
+an attendee is asking is "where do I go next", and that is one round. Rooms they
+voted for are highlighted.
+
+**On the projector** it is either the overview (every round side by side) or one
+round large — and that choice belongs to the **organizer**, not to whoever is
+standing near the display laptop, which during Open Spaces is usually plugged in
+behind the stage. The control is on `/admin/run`; it rides the existing sessions
+subscription, so it lands on screen exactly like a phase change.
+
+A phone follows the projector's round automatically, so glancing up at the big
+screen and down at your phone shows the same thing — until the attendee taps a
+round themselves, after which their choice is left alone.
+
+Regenerating the schedule resets the projector to the overview, so it can never
+be left pointing at a round that no longer exists.
+
 ### Reset vs archive
 
 Two ways to start again, and they are not interchangeable:

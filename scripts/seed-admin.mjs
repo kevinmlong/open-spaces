@@ -14,24 +14,13 @@
  * accident because someone had the wrong env file loaded.
  */
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
+import { loadEnv } from './_env.mjs'
 
-function loadEnv(file) {
-  try {
-    for (const line of readFileSync(file, 'utf8').split('\n')) {
-      const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
-      if (m && !process.env[m[1]]) process.env[m[1]] = m[2]
-    }
-  } catch {
-    /* file is optional */
-  }
-}
 const args = process.argv.slice(2)
 const allowRemote = args.includes('--allow-remote')
 const envIdx = args.indexOf('--env')
 if (envIdx !== -1 && args[envIdx + 1]) loadEnv(args[envIdx + 1])
-loadEnv('.env.local')
-loadEnv('.env')
+loadEnv()
 
 const url = process.env.VITE_SUPABASE_URL
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY

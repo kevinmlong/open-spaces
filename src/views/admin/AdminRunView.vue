@@ -10,6 +10,7 @@ import ConnectionBadge from '@/components/shared/ConnectionBadge.vue'
 import CountdownTimer from '@/components/shared/CountdownTimer.vue'
 import ConfirmDialog from '@/components/shared/ConfirmDialog.vue'
 import ErrorNote from '@/components/shared/ErrorNote.vue'
+import { roundLabel } from '@/lib/schedule'
 
 const session = useSessionStore()
 const topics = useTopicsStore()
@@ -87,6 +88,15 @@ function confirmReopen() {
     confirmLabel: 'Reopen',
     run: () => session.setPhase('proposals_open', minutes.value),
   })
+}
+
+async function showRound(round) {
+  error.value = null
+  try {
+    await session.setDisplayRound(round)
+  } catch (e) {
+    error.value = e
+  }
 }
 
 async function submitMic() {
@@ -211,6 +221,44 @@ async function submitMic() {
             Add
           </button>
         </form>
+      </section>
+
+      <!--
+        Drive the projector from here. The display laptop is usually plugged in
+        behind the stage, so nobody should have to walk to it to change what the
+        room is looking at.
+      -->
+      <section v-if="session.phase === 'scheduled'" class="rounded-xl bg-white p-5 shadow-sm">
+        <h3 class="font-bold text-navy">On the big screen</h3>
+        <p class="mt-1 text-sm text-slate-500">
+          Show everything at once, or put one round up large as it starts.
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <button
+            class="rounded-xl px-4 py-2 text-sm font-semibold transition"
+            :class="
+              session.row?.display_round === null || session.row?.display_round === undefined
+                ? 'bg-navy text-white'
+                : 'border border-slate-300 text-navy'
+            "
+            @click="showRound(null)"
+          >
+            Overview
+          </button>
+          <button
+            v-for="i in (session.row?.rounds ?? 0)"
+            :key="i"
+            class="rounded-xl px-4 py-2 text-sm font-semibold transition"
+            :class="
+              session.row?.display_round === i - 1
+                ? 'bg-teal text-white'
+                : 'border border-slate-300 text-navy'
+            "
+            @click="showRound(i - 1)"
+          >
+            {{ roundLabel(session.row, i - 1) }}
+          </button>
+        </div>
       </section>
 
       <!-- Live tallies: admin only, by RLS. -->

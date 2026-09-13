@@ -106,6 +106,20 @@ export const useSessionStore = defineStore('session', () => {
    * Destructive, unlike archive: the data is gone. Scope is one of
    * 'schedule' | 'votes' | 'topics' | 'all'.
    */
+  /**
+   * What the projector shows during `scheduled`: null for the overview, or a
+   * round index. Driven from the admin console, since the display laptop is
+   * usually behind the stage.
+   */
+  async function setDisplayRound(round) {
+    const { data, error } = await supabase.rpc('set_display_round', {
+      p_session: sessionId.value,
+      p_round: round,
+    })
+    if (error) throw error
+    apply(Array.isArray(data) ? data[0] : data)
+  }
+
   async function reset(scope) {
     const { data, error } = await supabase.rpc('reset_session', {
       p_session: sessionId.value,
@@ -145,6 +159,7 @@ export const useSessionStore = defineStore('session', () => {
     pollStats,
     setPhase,
     extendDeadline,
+    setDisplayRound,
     reset,
     archiveAndStartNew,
   }

@@ -13,19 +13,11 @@
  * sharing one localStorage slot.
  */
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
+import { loadEnv } from './_env.mjs'
 
 for (const file of ['.env.production.local', '.env']) {
   try {
-    for (const line of readFileSync(file, 'utf8').split('\n')) {
-      const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
-      if (m && !process.env[m[1]]) process.env[m[1]] = m[2]
-    }
-  } catch {
-    /* optional */
-  }
-}
-
+    
 const URL = process.env.VITE_SUPABASE_URL
 const KEY = process.env.VITE_SUPABASE_ANON_KEY
 if (!URL || !KEY) {

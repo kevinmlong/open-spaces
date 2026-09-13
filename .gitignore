@@ -15,6 +15,7 @@ display.png
 # Verification artefacts from scripts/shoot-display.mjs
 /display.png
 /timeup.png
+/shot-*.png
 
 # Playwright
 /test-results/

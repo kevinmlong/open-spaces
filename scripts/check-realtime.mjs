@@ -10,11 +10,8 @@
  * starts from a known phase, then works in the fresh one.
  */
 import { createClient } from '@supabase/supabase-js'
-import { readFileSync } from 'node:fs'
-for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
-  const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
-  if (m) process.env[m[1]] = m[2]
-}
+import { loadEnv } from './_env.mjs'
+loadEnv()
 const U = process.env.VITE_SUPABASE_URL
 const K = process.env.VITE_SUPABASE_ANON_KEY
 const mk = () => createClient(U, K, { auth: { persistSession: false } })
