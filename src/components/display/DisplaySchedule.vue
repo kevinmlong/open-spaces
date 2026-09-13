@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import { useResultsStore } from '@/stores/results'
 import { roomName, roundLabel } from '@/lib/schedule'
+import { titleScale } from '@/lib/titleScale'
 
 /**
  * The schedule on the projector, in the same dark palette as the proposal and
@@ -46,15 +47,21 @@ function cell(round, room) {
       <div
         v-for="m in rooms"
         :key="m"
-        class="sched-card flex min-h-0 flex-1 flex-col justify-center rounded-2xl bg-white/10 px-10"
+        class="sched-card min-h-0 flex-1 overflow-hidden rounded-2xl bg-white/10"
       >
-        <p class="sched-room font-semibold tracking-wide text-light-pink uppercase">
-          {{ roomName(session.row, m - 1) }}
-        </p>
-        <p v-if="cell(focused, m - 1)" class="sched-title font-semibold text-white">
-          {{ cell(focused, m - 1).topics?.title }}
-        </p>
-        <p v-else class="sched-title italic text-white/40">open — grab it</p>
+        <div class="sched-inner flex h-full flex-col justify-center">
+          <p class="sched-room font-semibold tracking-wide text-light-pink uppercase">
+            {{ roomName(session.row, m - 1) }}
+          </p>
+          <p
+            v-if="cell(focused, m - 1)"
+            class="sched-title font-semibold text-white"
+            :style="{ '--len': titleScale(cell(focused, m - 1).topics?.title) }"
+          >
+            {{ cell(focused, m - 1).topics?.title }}
+          </p>
+          <p v-else class="sched-title italic text-white/40">open — grab it</p>
+        </div>
       </div>
     </div>
   </div>
@@ -73,15 +80,21 @@ function cell(round, room) {
       <div
         v-for="m in rooms"
         :key="m"
-        class="sched-card flex min-h-0 flex-1 flex-col justify-center rounded-2xl bg-white/10 px-6"
+        class="sched-card min-h-0 flex-1 overflow-hidden rounded-2xl bg-white/10"
       >
-        <p class="sched-room font-semibold tracking-wide text-light-pink uppercase">
-          {{ roomName(session.row, m - 1) }}
-        </p>
-        <p v-if="cell(r - 1, m - 1)" class="sched-title font-semibold text-white">
-          {{ cell(r - 1, m - 1).topics?.title }}
-        </p>
-        <p v-else class="sched-title italic text-white/40">open — grab it</p>
+        <div class="sched-inner flex h-full flex-col justify-center">
+          <p class="sched-room font-semibold tracking-wide text-light-pink uppercase">
+            {{ roomName(session.row, m - 1) }}
+          </p>
+          <p
+            v-if="cell(r - 1, m - 1)"
+            class="sched-title font-semibold text-white"
+            :style="{ '--len': titleScale(cell(r - 1, m - 1).topics?.title) }"
+          >
+            {{ cell(r - 1, m - 1).topics?.title }}
+          </p>
+          <p v-else class="sched-title italic text-white/40">open — grab it</p>
+        </div>
       </div>
     </div>
   </div>
@@ -95,7 +108,26 @@ function cell(round, room) {
  */
 .sched-card {
   container-type: size;
-  overflow: hidden;
+}
+
+/*
+ * Padding lives on an inner element, not on the card, and that is deliberate:
+ * cq units resolve against the container's CONTENT box, so cq-unit padding on
+ * the container itself would be defined in terms of a box its own value
+ * determines. On a child it is simply a percentage of the card.
+ *
+ * Vertical padding scales with the card's height, horizontal with its width --
+ * each axis against the dimension it actually sits in. A single value for all
+ * four sides looked starved horizontally: 11px of side inset on a 600px-wide
+ * card reads as cramped even though the same 11px is generous against a 134px
+ * height.
+ *
+ * Both are consistent between the overview and the single-round view, which is
+ * what was really wrong before: they differed arbitrarily (px-6 against px-10)
+ * and had no vertical padding at all.
+ */
+.sched-inner {
+  padding: clamp(0.5rem, 8cqh, 1.75rem) clamp(1.25rem, 4cqw, 3rem);
 }
 
 /*
@@ -111,7 +143,7 @@ function cell(round, room) {
  * have somewhere to go.
  */
 .sched-title {
-  font-size: clamp(1rem, min(30cqh, 9cqw), 4rem);
+  font-size: clamp(1rem, calc(min(30cqh, 8.5cqw) * var(--len, 1)), 4rem);
   line-height: 1.15;
   margin-top: 0.35em;
 }

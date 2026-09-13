@@ -266,9 +266,20 @@ means a short card gets small text, a narrow card gets small text, and a card
 with room in both directions gets large text — without anything needing to know
 which layout it is in.
 
-`30cqh` is a measured ceiling, not a taste call: at 34 a long title wraps to a
-third line in the narrow overview columns and clips. Measured at 1920x1080 with
-an 84-character title, nothing clips anywhere:
+The container handles the box; it cannot know what goes in it, so a small
+content-aware factor (`src/lib/titleScale.js`) steps long titles down. In a
+narrow overview column an 80-character title wraps to four lines and spills out
+of a card a short title fills comfortably. Long titles shrink rather than being
+clipped or truncated, so every word stays readable from the back of the room.
+
+Padding scales per axis — vertical against the card's height, horizontal against
+its width — because one value for all four sides looked starved sideways: 11px
+of side inset on a 600px-wide card reads as cramped even though the same 11px is
+generous against a 134px height. Both are consistent between the two layouts,
+which is what was actually wrong before (`px-6` against `px-10`, and no vertical
+padding at all).
+
+Measured at 1920x1080 with an 84-character title, nothing clips anywhere:
 
 | shape | card | title |
 |---|---|---|
