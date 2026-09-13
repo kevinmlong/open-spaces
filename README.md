@@ -267,12 +267,51 @@ scripts/                   seed-admin · e2e-lifecycle · check-realtime · simu
 
 ## Deployment
 
-Not set up yet — intentionally. The app is built and verified locally first.
+Fly.io, built and deployed by GitHub Actions on every push to `main`.
 
-Two things to remember when it is: `VITE_*` values are inlined at **build time**
-(so a container must pass them as build args, not runtime env), and the anon key
-is **safe to ship publicly** — RLS is the security boundary. The `service_role`
-key must never appear in `src/` or any `VITE_`-prefixed variable.
+### One-time setup
 
-Migrations go up with `supabase db push`, **run by hand**. Never wire them into
-CI; an automatic migration on every push is how you drop a table during a keynote.
+```bash
+fly launch --no-deploy          # or: fly apps create dcsots-open-spaces
+fly tokens create deploy -a dcsots-open-spaces
+```
+
+Then in the GitHub repo (Settings → Secrets and variables → Actions):
+
+| Name | Kind | Value |
+|---|---|---|
+| `FLY_API_TOKEN` | **secret** | the deploy token from above |
+| `VITE_SUPABASE_URL` | **variable** | `https://<project>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | **variable** | the project's anon key |
+
+The two Supabase values are **variables, not secrets**, deliberately. Both are
+public — the anon key only carries `role: anon` and RLS is the real boundary —
+and GitHub masks secrets in logs, which turns a bad deploy into a guessing game.
+The `service_role` key must never appear in either list.
+
+### Why the values are build args
+
+This is a static SPA: there is no server at runtime to read `process.env`. Vite
+**inlines** `import.meta.env.VITE_*` into the bundle during `npm run build`, so
+the values have to exist inside the image while it builds — hence `--build-arg`,
+not Fly secrets. `src/lib/supabase.js` throws on import when they are missing,
+so a misconfigured build fails in CI instead of serving a white screen.
+
+(`docker build` warns `SecretsUsedInArgOrEnv` for the anon key. It is a generic
+warning about build args, and is expected here: the value is public by design.)
+
+### What the image does
+
+Multi-stage: `node:22-alpine` builds, `nginx-unprivileged:1.27-alpine` serves —
+non-root on port 8080, ~52MB. `index.html` is served `no-store` so a hotfix
+reaches every device on the next refresh, while `/assets/*` (content-hashed) is
+`immutable` for a year. `/healthz` backs the Fly health check.
+
+`fly.toml` runs **two always-on machines** in `iad` with `auto_stop_machines`
+off. A cold start in front of a live audience is not acceptable, and two
+shared-cpu machines cost a couple of dollars for the week.
+
+### Migrations are not in CI
+
+Run `supabase db push` **by hand**, deliberately, before the event. An automatic
+migration on every push to `main` is how you drop a table during a keynote.

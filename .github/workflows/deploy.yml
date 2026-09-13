@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  # Never cancel a half-finished deploy.
+  cancel-in-progress: false
+
+jobs:
+  # Catches a missing build arg before it reaches Fly: src/lib/supabase.js throws
+  # on import when the env vars are absent, so the build fails here rather than
+  # shipping a white screen.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+  deploy:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      # --build-arg, not runtime env: Vite inlines these during `npm run build`
+      # inside the image, so they have to exist at build time. They are `vars`
+      # rather than `secrets` on purpose -- both values are public (the anon key
+      # only carries `role: anon`; RLS is the real boundary), and GitHub masks
+      # secrets in logs, which makes a bad deploy needlessly hard to diagnose.
+      - name: Deploy to Fly
+        run: |
+          flyctl deploy --remote-only \
+            --build-arg VITE_SUPABASE_URL="${{ vars.VITE_SUPABASE_URL }}" \
+            --build-arg VITE_SUPABASE_ANON_KEY="${{ vars.VITE_SUPABASE_ANON_KEY }}"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
