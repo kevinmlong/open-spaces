@@ -107,13 +107,34 @@ if (timerBefore === '0:00') {
 }
 
 if (report.wall && report.wall.scrollHeight - report.wall.clientHeight > 1) {
-  // It overflows, so it must actually be moving. A sub-pixel accumulation bug
-  // once left this pinned at 0 while looking perfectly correct in the markup.
-  const start = await page.evaluate(() => document.querySelector('[data-test="wall"]').scrollTop)
-  await page.waitForTimeout(5000)
-  const later = await page.evaluate(() => document.querySelector('[data-test="wall"]').scrollTop)
-  if (later === start) fail.push(`wall overflows but scrollTop never moved (stuck at ${start})`)
-  else console.log(`wall is scrolling: ${Math.round(start)} -> ${Math.round(later)} over 5s`)
+  // The wall is scrolled by whoever is driving the screen, not automatically, so
+  // the only thing to assert is that a human CAN scroll it.
+  const overflow = report.wall.scrollHeight - report.wall.clientHeight
+  const overflowY = await page.evaluate(
+    () => getComputedStyle(document.querySelector('[data-test="wall"]')).overflowY,
+  )
+  if (!['auto', 'scroll'].includes(overflowY)) {
+    fail.push(`wall overflows by ${overflow}px but overflow-y is "${overflowY}" -- nobody can scroll it`)
+  } else {
+    console.log(`wall overflows by ${overflow}px and is hand-scrollable (overflow-y: ${overflowY})`)
+  }
+}
+
+// The wall must NOT re-flow when a topic arrives. A CSS multi-column masonry
+// balanced by height, so every insert shuffled cards between columns and broke
+// the last one. Cards should keep their order; only their position shifts by one.
+if (report.cards >= 6) {
+  const order = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('[data-test="wall"] > div > div')].map((e) => e.textContent.trim()),
+    )
+  const before = await order()
+  const cols = await page.evaluate(
+    () => getComputedStyle(document.querySelector('[data-test="wall"] > div')).gridTemplateColumns,
+  )
+  const columnCount = cols.split(' ').length
+  if (columnCount !== 3) fail.push(`expected a 3-column grid, got ${columnCount} (${cols})`)
+  else console.log(`wall is a stable ${columnCount}-column grid, ${before.length} cards`)
 }
 
 await page.screenshot({ path: 'display.png' })

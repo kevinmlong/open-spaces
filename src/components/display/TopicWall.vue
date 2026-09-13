@@ -1,45 +1,37 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { columnsFor, heroSizeClass, itemSizeClass, splitFeed } from '@/lib/wall'
-import { useAutoScroll } from '@/composables/useAutoScroll'
+import { computed } from 'vue'
+import { WALL_COLUMNS, ITEM_SIZE, heroSizeClass, splitFeed } from '@/lib/wall'
 
 /**
  * The projector's topic wall.
  *
  * The newest idea is the hero: large, pink, front and centre. That is the moment
  * that matters -- someone has just typed a thought and wants to see it land in
- * front of the room. Everything proposed before it sits below in a masonry grid
- * that scrolls gently when it outgrows the screen.
+ * front of the room. Everything proposed sits below it in a fixed three-column
+ * grid, newest first, filling left to right.
  *
- * Masonry is CSS multi-column rather than a grid library: titles are variable
- * length, and columns pack them by height for free. `break-inside-avoid` is what
- * stops a card being sliced across a column boundary.
+ * Two decisions worth not undoing:
+ *
+ *   GRID, NOT MULTI-COLUMN. This was CSS `columns-N` masonry, which balances
+ *   content by height -- so every arriving topic re-flowed the whole wall, cards
+ *   hopped between columns and the last column visibly broke. A grid places each
+ *   card in a cell and leaves it there.
+ *
+ *   NO AUTO-SCROLL. The wall scrolls under human control, from the machine
+ *   driving the screen. An automatic crawl competes with the person running the
+ *   room, and there is no speed that suits both someone reading the list and
+ *   someone waiting to see their own topic appear.
  */
 const props = defineProps({
   topics: { type: Array, required: true },
 })
 
 const feed = computed(() => splitFeed(props.topics))
-const columns = computed(() => columnsFor(feed.value.items.length))
-
-const wallEl = ref(null)
-// Reset the scroll whenever a topic arrives, so a new one is never left sitting
-// below the fold.
-useAutoScroll(
-  wallEl,
-  computed(() => props.topics.length),
-)
-
-const COLUMN_CLASS = { 1: 'columns-1', 2: 'columns-2', 3: 'columns-3', 4: 'columns-4' }
 </script>
 
 <template>
   <div class="flex min-h-0 flex-col gap-6">
-    <!--
-      Hero: the newest idea, and the only pink thing on the screen.
-      Capped at 40% of the available height so a very long title can never
-      squeeze the wall below it out of existence.
-    -->
+    <!-- Hero: the newest idea, and the only pink thing on the screen. -->
     <div
       v-if="feed.hero"
       data-test="hero-block"
@@ -51,35 +43,37 @@ const COLUMN_CLASS = { 1: 'columns-1', 2: 'columns-2', 3: 'columns-3', 4: 'colum
       <!--
         leading-[1.15] + pb-2: Tailwind's big type steps ship line-height 1, so
         the line box is exactly the cap height and descenders (q, y, g, p) get
-        sheared off by the clip above. Measured at 7px on text-7xl.
+        sheared off by the clip above.
       -->
       <p
         data-test="hero"
         class="pb-2 leading-[1.15] font-extrabold text-pink"
         :class="heroSizeClass(feed.hero.title)"
       >
-        {{ feed.hero.title }}
-        <span v-if="feed.hero.source === 'mic'" class="opacity-60">🎤</span>
+        {{ feed.hero.title }}<span v-if="feed.hero.source === 'mic'" class="ml-3 opacity-60">🎤</span>
       </p>
     </div>
 
     <div v-if="feed.items.length" class="h-px shrink-0 bg-white/10" />
 
     <!--
-      The wall takes whatever height is left and scrolls inside it. min-h-0 is
-      what lets a flex child actually shrink below its content size -- without
-      it this grows and pushes the footer off the screen.
+      Takes whatever height is left and scrolls inside it. min-h-0 is what lets a
+      flex child shrink below its content size; without it this grows and pushes
+      the footer off the screen. overflow-y-auto keeps it scrollable by whoever
+      is driving the display.
     -->
-    <div ref="wallEl" data-test="wall" class="min-h-0 flex-1 overflow-y-hidden">
-      <div :class="COLUMN_CLASS[columns]" class="gap-6">
+    <div ref="wallEl" data-test="wall" class="min-h-0 flex-1 overflow-y-auto">
+      <div
+        class="grid gap-5"
+        :style="{ gridTemplateColumns: `repeat(${WALL_COLUMNS}, minmax(0, 1fr))` }"
+      >
         <div
           v-for="t in feed.items"
           :key="t.id"
-          class="mb-6 break-inside-avoid rounded-2xl bg-white/10 px-6 py-5 font-semibold text-white"
-          :class="itemSizeClass(columns)"
+          class="rounded-2xl bg-white/10 px-6 py-5 font-semibold text-white"
+          :class="ITEM_SIZE"
         >
-          {{ t.title }}
-          <span v-if="t.source === 'mic'" class="opacity-60">🎤</span>
+          {{ t.title }}<span v-if="t.source === 'mic'" class="ml-2 opacity-60">🎤</span>
         </div>
       </div>
     </div>

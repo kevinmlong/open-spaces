@@ -117,7 +117,7 @@ const admin = createClient(URL, KEY, { auth: { persistSession: false } })
 {
   const { error } = await admin.auth.signInWithPassword({
     email: 'organizer1@dcstateofthestack.org',
-    password: 'openspaces-local-dev',
+    password: 'AmLR8ODSviDfEc7mr5AIF8wE',
   })
   if (error) {
     console.error(`admin sign-in failed: ${error.message}`)

@@ -205,20 +205,25 @@ on. The admin previews the exact grid before publishing.
 
 ### The projector: newest idea first, then the wall
 
-`/display` puts the **newest topic front and centre** in large pink type. That is
-the moment that matters -- someone has just typed a thought and wants to see it
-land in front of the room. Everything proposed before it sits below in a masonry
-grid that scrolls gently when it outgrows the screen, and resets to the top
-whenever a topic arrives so nothing new is hidden below the fold.
+`/display` puts the **newest topic front and centre** in large pink type — that
+is the moment that matters, when someone has just typed a thought and wants to
+see it land in front of the room. Every topic sits below in a **fixed
+three-column grid**, newest first, filling left to right.
 
-Masonry is CSS multi-column rather than a grid library: titles are variable
-length and columns pack them by height for free. `break-inside-avoid` is what
-stops a card being sliced across a column boundary.
+Two things here were learned by getting them wrong:
 
-Column count and type size both scale with how full the wall is -- three topics
-read large and sparse, forty pack into four tighter columns. That maths lives in
-`src/lib/wall.js` and is unit-tested, including the invariant that the hero
-always outsizes a wall item of the same length so the two never compete.
+**Grid, not multi-column.** This started as CSS `columns-N` masonry with a column
+count that grew with the list. Multi-column *balances* content by height, so
+every arriving topic re-flowed the whole wall: cards hopped between columns and
+the last column visibly broke apart. A grid puts each card in a cell and leaves
+it there — a new topic takes the top-left cell and everything else shuffles along
+by one, which is predictable from the back of a room. `npm run check:display`
+asserts the column count and that card order survives an insert.
+
+**No auto-scroll.** An automatic crawl competes with whoever is running the room,
+and there is no speed that suits both someone reading the list and someone
+waiting to see their own topic appear. The wall scrolls under human control from
+the machine driving the screen.
 
 ### Reset vs archive
 

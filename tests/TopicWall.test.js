@@ -10,22 +10,39 @@ const topics = (n) =>
     status: 'active',
   }))
 
-const mountWall = (list) =>
-  mount(TopicWall, { props: { topics: list, recentIds: new Set() } })
+const mountWall = (list) => mount(TopicWall, { props: { topics: list } })
+
+const gridCols = (w) =>
+  w.find('[data-test="wall"] > div').attributes('style') ?? ''
 
 describe('TopicWall', () => {
-  it('applies a real masonry column class', () => {
-    // The regression this exists for: when the component referenced a prop key
-    // that no longer existed, `columns` came back undefined, no columns-N class
-    // was applied, and the masonry silently rendered as a plain vertical list.
+  it('lays the wall out as a real three-column grid', () => {
+    // The regression this exists for: a component referencing a prop key that no
+    // longer existed left the column count undefined, no class was applied, and
+    // the wall silently rendered as a plain vertical list.
     const w = mountWall(topics(20))
-    expect(w.html()).toMatch(/columns-[1-4]/)
+    expect(gridCols(w)).toContain('repeat(3,')
+    expect(w.find('[data-test=\"wall\"] > div').classes()).toContain('grid')
   })
 
-  it('packs into more columns as the wall fills up', () => {
-    const cols = (n) => mountWall(topics(n)).html().match(/columns-([1-4])/)[1]
-    expect(Number(cols(2))).toBeLessThan(Number(cols(10)))
-    expect(Number(cols(10))).toBeLessThan(Number(cols(30)))
+  it('keeps the same three columns at every topic count', () => {
+    // A column count that grew with the list was what made the wall re-flow --
+    // cards hopped between columns every time a topic arrived.
+    for (const n of [1, 4, 12, 40]) {
+      expect(gridCols(mountWall(topics(n)))).toContain('repeat(3,')
+    }
+  })
+
+  it('puts the newest topic in the first cell', () => {
+    // Newest-first, filling left to right: the new one takes the top-left cell.
+    const cards = mountWall(topics(7)).findAll('[data-test=\"wall\"] > div > div')
+    expect(cards[0].text()).toContain('Topic number 0')
+    expect(cards[1].text()).toContain('Topic number 1')
+  })
+
+  it('does not auto-scroll, but stays scrollable by hand', () => {
+    const cls = mountWall(topics(40)).find('[data-test=\"wall\"]').classes().join(' ')
+    expect(cls).toContain('overflow-y-auto')
   })
 
   it('shows the newest topic as the hero AND in the wall', () => {
@@ -51,28 +68,20 @@ describe('TopicWall', () => {
   })
 
   it('gives every wall card the same type size', () => {
-    const wall = mountWall(topics(20)).find('[data-test="wall"]')
-    const sizes = wall.findAll('[class*="text-"]')
-      .map((el) => el.classes().find((c) => /^text-(xs|sm|base|[0-9]?xl)$/.test(c)))
-      .filter(Boolean)
+    const cards = mountWall(topics(20)).findAll('[data-test=\"wall\"] > div > div')
+    const sizes = cards.map((el) => el.classes().find((c) => /^text-\d?xl$/.test(c)))
     expect(sizes.length).toBeGreaterThan(1)
     expect(new Set(sizes).size).toBe(1)
   })
 
   it('reserves pink for the hero so the eye has one place to land', () => {
     const w = mountWall(topics(20))
-    // The hero is the only pink thing on the screen. Wall cards used to flash
-    // pink on arrival, which competed with it.
-    const wall = w.find('[data-test="wall"]')
-    expect(wall.html()).not.toContain('bg-pink')
-    expect(w.find('[data-test="hero"]').classes().join(' ')).toContain('text-pink')
+    expect(w.find('[data-test=\"wall\"]').html()).not.toContain('bg-pink')
+    expect(w.find('[data-test=\"hero\"]').classes().join(' ')).toContain('text-pink')
   })
 
-  it('keeps the wall inside a scrollable, height-capped container', () => {
-    // The wall must absorb leftover height and scroll -- never grow the page.
-    const wall = mountWall(topics(40)).find('[data-test="wall"]')
-    const cls = wall.classes().join(' ')
-    expect(cls).toContain('overflow-y-hidden')
+  it('absorbs leftover height rather than growing the page', () => {
+    const cls = mountWall(topics(40)).find('[data-test=\"wall\"]').classes().join(' ')
     expect(cls).toContain('min-h-0')
     expect(cls).toContain('flex-1')
   })

@@ -15,7 +15,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { readFileSync } from 'node:fs'
 
-for (const file of ['.env.local', '.env']) {
+for (const file of ['.env.production.local', '.env']) {
   try {
     for (const line of readFileSync(file, 'utf8').split('\n')) {
       const m = line.match(/^([A-Z0-9_]+)=(.*)$/)
