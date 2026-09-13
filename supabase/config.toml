@@ -41,8 +41,11 @@ enabled = false
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
-additional_redirect_urls = ["http://localhost:5173"]
+# The deployed app. This is what password-reset links point at, so it must be
+# the real origin rather than a developer's laptop. localhost stays in the
+# redirect list so local development keeps working.
+site_url = "https://dcsots-open-spaces.fly.dev"
+additional_redirect_urls = ["https://dcsots-open-spaces.fly.dev", "http://localhost:5173"]
 
 # A full day, so no token refresh is needed during a two-hour session on flaky
 # venue wifi.
