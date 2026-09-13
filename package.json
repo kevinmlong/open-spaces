@@ -21,7 +21,8 @@
     "check:presence": "node scripts/check-presence.mjs",
     "drip": "node scripts/drip-topics.mjs",
     "check:display": "node scripts/shoot-display.mjs",
-    "check:archive": "node scripts/check-archive-follow.mjs"
+    "check:archive": "node scripts/check-archive-follow.mjs",
+    "demo:schedule": "node scripts/demo-schedule.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

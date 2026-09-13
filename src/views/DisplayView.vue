@@ -152,7 +152,7 @@ const stale = computed(() => {
             ? 'The schedule'
             : 'Up next' }}
         </h2>
-        <DisplaySchedule />
+        <DisplaySchedule class="min-h-0 flex-1" />
       </template>
 
       <!-- archived -->

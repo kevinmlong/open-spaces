@@ -248,6 +248,21 @@ round themselves, after which their choice is left alone.
 Regenerating the schedule resets the projector to the overview, so it can never
 be left pointing at a round that no longer exists.
 
+**Filling the screen.** Every card on the projector is `flex-1`, so the rooms
+divide whatever height is left and the screen is always full. CSS handles the
+height; it cannot choose a font size to match, so `src/lib/displayScale.js` picks
+one from the room count — otherwise two rooms leave half-empty boxes with small
+type marooned in them, and eight overflow. Measured across the range:
+
+| shape | card height | title |
+|---|---|---|
+| 3 rounds x 2 rooms, one round up | 270px | 72px |
+| 3 rounds x 4 rooms, one round up | 127px | 48px |
+| 3 rounds x 8 rooms, one round up | 56px | 30px |
+
+`npm run demo:schedule [rounds] [rooms] [voters]` drives a session all the way to
+a published schedule, which is the quickest way to look at any of these.
+
 ### Reset vs archive
 
 Two ways to start again, and they are not interchangeable:
