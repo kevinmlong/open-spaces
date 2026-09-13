@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+supabase/.branches
+supabase/.temp
+*.log
+.DS_Store
+.vite/
+coverage/
+display.png
+
+# Verification artefacts from scripts/shoot-display.mjs
+/display.png
+/timeup.png
+
+# Playwright
+/test-results/
+/playwright-report/

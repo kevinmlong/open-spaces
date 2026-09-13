@@ -1,0 +1,44 @@
+{
+  "name": "open-spaces",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:status": "supabase status",
+    "db:push": "supabase db push",
+    "test:policies": "supabase db reset && psql postgresql://postgres:postgres@127.0.0.1:54422/postgres -v ON_ERROR_STOP=1 -f tests/policies.sql",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "simulate": "node scripts/simulate-voters.mjs",
+    "e2e": "node scripts/e2e-lifecycle.mjs",
+    "check:realtime": "node scripts/check-realtime.mjs",
+    "verify": "vitest run && node scripts/e2e-lifecycle.mjs && node scripts/check-realtime.mjs && node scripts/check-presence.mjs && node scripts/check-archive-follow.mjs && node scripts/shoot-display.mjs",
+    "check:presence": "node scripts/check-presence.mjs",
+    "drip": "node scripts/drip-topics.mjs",
+    "check:display": "node scripts/shoot-display.mjs",
+    "check:archive": "node scripts/check-archive-follow.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0",
+    "pinia": "^3.0.3",
+    "qrcode": "^1.5.4",
+    "vue": "^3.5.22",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/test-utils": "^2.5.0",
+    "happy-dom": "^20.14.3",
+    "playwright": "^1.63.0",
+    "supabase": "^2.117.0",
+    "tailwindcss": "^4.1.18",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  }
+}

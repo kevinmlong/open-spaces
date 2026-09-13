@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Brand tokens copied verbatim from the conference site
+   (../website/src/styles/global.css) so the two stay visually identical. */
+@theme {
+  --color-navy: #1a2744;
+  --color-teal: #167D72;
+  --color-pink: #d4508b;
+  --color-light-pink: #f0a0c0;
+
+  /* Projector-scale type for /display */
+  --text-display-sm: 2.25rem;
+  --text-display-md: 3.5rem;
+  --text-display-lg: 5rem;
+  --text-display-xl: 7rem;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--color-navy);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Tap targets stay comfortable on a phone held one-handed in a crowded room. */
+button, [role="button"], a {
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
