@@ -126,6 +126,40 @@ end $$;
 update public.sessions set proposals_deadline = now() + interval '10 minutes'
  where archived_at is null;
 
+-- A direct UPDATE filtered away by RLS affects zero rows and raises NOTHING.
+-- Asserting only that an error came back would pass even if the row had changed,
+-- so these check the row count and the value itself.
+do $$
+declare n int; before public.session_phase; after public.session_phase;
+begin
+  select phase into before from public.sessions where archived_at is null;
+
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  update public.sessions set phase = 'voting_open' where archived_at is null;
+  get diagnostics n = row_count;
+
+  reset role;
+  select phase into after from public.sessions where archived_at is null;
+
+  if n <> 0 then raise exception 'FAIL: attendee UPDATE touched % session rows', n; end if;
+  if before <> after then raise exception 'FAIL: phase changed % -> %', before, after; end if;
+  raise notice 'PASS: attendee UPDATE on sessions changes nothing (0 rows, phase intact)';
+end $$;
+
+do $$
+declare n int;
+begin
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  update public.topics set title = 'hijacked' where status = 'active';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: attendee rewrote % topic titles', n; end if;
+
+  delete from public.topics where status = 'active';
+  get diagnostics n = row_count;
+  if n <> 0 then raise exception 'FAIL: attendee deleted % topics', n; end if;
+  raise notice 'PASS: attendee cannot edit or delete topics (0 rows each)';
+end $$;
+
 \echo '=== 2. attendees cannot write votes directly ==='
 
 do $$
