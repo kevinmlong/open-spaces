@@ -36,6 +36,12 @@ onMounted(async () => {
 
 // If the projector has seen nothing at all for a while, say so rather than
 // quietly showing stale content to a room of 300 people.
+// Split the footer once the schedule is up, or whenever there is a message --
+// a lone join prompt still reads best centred.
+const footerSplit = computed(
+  () => session.phase === 'scheduled' || !!session.row?.display_note,
+)
+
 const stale = computed(() => {
   void session.tick
   return status.value !== 'live' && lastSyncAt.value && Date.now() - lastSyncAt.value > 60000
@@ -165,11 +171,29 @@ const stale = computed(() => {
       Join panel as a slim footer: always visible for latecomers, but it takes
       only vertical space, so it cannot push the content sideways.
     -->
-    <footer class="flex shrink-0 items-center justify-center gap-8 px-10 pb-8">
-      <!-- Sized to be scannable from the back of the room, not just the front row. -->
-      <img v-if="qr" :src="qr" alt="" class="size-48 rounded-xl bg-white p-2" />
-      <p class="text-4xl font-semibold text-white/70">
-        Join at <span class="font-extrabold text-white">{{ joinHost }}</span>
+    <!--
+      Centred while the join prompt is the only thing here. Once the schedule is
+      up -- or the organizer has something to say -- the join details move left
+      and the message takes the right, so the two never fight for the middle.
+    -->
+    <footer
+      class="flex shrink-0 items-center gap-8 px-10 pb-8"
+      :class="footerSplit ? 'justify-between' : 'justify-center'"
+    >
+      <div class="flex shrink-0 items-center gap-8">
+        <!-- Sized to be scannable from the back of the room, not the front row. -->
+        <img v-if="qr" :src="qr" alt="" class="size-48 rounded-xl bg-white p-2" />
+        <p class="text-4xl font-semibold text-white/70">
+          Join at <span class="font-extrabold text-white">{{ joinHost }}</span>
+        </p>
+      </div>
+
+      <p
+        v-if="session.row?.display_note"
+        data-test="display-note"
+        class="max-w-[45%] text-right text-4xl font-bold text-balance text-light-pink"
+      >
+        {{ session.row.display_note }}
       </p>
     </footer>
   </div>

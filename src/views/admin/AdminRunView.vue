@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import { useTopicsStore } from '@/stores/topics'
 import { useResultsStore } from '@/stores/results'
@@ -88,6 +88,27 @@ function confirmReopen() {
     confirmLabel: 'Reopen',
     run: () => session.setPhase('proposals_open', minutes.value),
   })
+}
+
+const note = ref(session.row?.display_note ?? '')
+watch(
+  () => session.row?.display_note,
+  (v) => {
+    // Follow the server unless this admin is mid-edit, so a note set from the
+    // other organizer's laptop shows up here too.
+    if (document.activeElement !== noteInput.value) note.value = v ?? ''
+  },
+)
+const noteInput = ref(null)
+
+async function saveNote(value) {
+  error.value = null
+  try {
+    await session.setDisplayNote(value)
+    note.value = value ?? ''
+  } catch (e) {
+    error.value = e
+  }
 }
 
 async function showRound(round) {
@@ -259,6 +280,39 @@ async function submitMic() {
             {{ roundLabel(session.row, i - 1) }}
           </button>
         </div>
+      </section>
+
+      <!--
+        Anything the room needs to know that the app does not: snacks, the
+        social, a round running late. It appears on the projector beside the
+        join details.
+      -->
+      <section class="rounded-xl bg-white p-5 shadow-sm">
+        <h3 class="font-bold text-navy">Message on the big screen</h3>
+        <p class="mt-1 text-sm text-slate-500">
+          Shown next to the QR code. Leave it empty for nothing.
+        </p>
+        <form class="mt-3 flex flex-wrap gap-2" @submit.prevent="saveNote(note)">
+          <input
+            ref="noteInput"
+            v-model="note"
+            maxlength="120"
+            placeholder="e.g. Snacks in the lobby · Social at 5:30"
+            class="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-2.5"
+          />
+          <button type="submit" class="rounded-xl bg-teal px-5 py-2.5 font-semibold text-white">
+            Show it
+          </button>
+          <button
+            v-if="session.row?.display_note"
+            type="button"
+            class="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-navy"
+            @click="saveNote(null)"
+          >
+            Clear
+          </button>
+        </form>
+        <p class="mt-1 text-right text-xs text-slate-400">{{ note.length }}/120</p>
       </section>
 
       <!-- Live tallies: admin only, by RLS. -->

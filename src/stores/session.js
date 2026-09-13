@@ -120,6 +120,16 @@ export const useSessionStore = defineStore('session', () => {
     apply(Array.isArray(data) ? data[0] : data)
   }
 
+  /** A short free-text message for the projector, or null to clear it. */
+  async function setDisplayNote(note) {
+    const { data, error } = await supabase.rpc('set_display_note', {
+      p_session: sessionId.value,
+      p_note: note,
+    })
+    if (error) throw error
+    apply(Array.isArray(data) ? data[0] : data)
+  }
+
   async function reset(scope) {
     const { data, error } = await supabase.rpc('reset_session', {
       p_session: sessionId.value,
@@ -160,6 +170,7 @@ export const useSessionStore = defineStore('session', () => {
     setPhase,
     extendDeadline,
     setDisplayRound,
+    setDisplayNote,
     reset,
     archiveAndStartNew,
   }

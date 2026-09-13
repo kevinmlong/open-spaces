@@ -401,6 +401,54 @@ begin
   raise notice 'PASS: regenerating the schedule resets the projector to the overview';
 end $$;
 
+\echo '=== 6c. the big-screen message is the admin''s to set ==='
+
+do $$
+declare denied boolean := false; v uuid;
+begin
+  v := public.active_session_id();
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  begin
+    perform public.set_display_note(v, 'free advertising');
+  exception when insufficient_privilege then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: attendee wrote to the projector'; end if;
+  raise notice 'PASS: attendee cannot put a message on the big screen';
+end $$;
+
+do $$
+declare v uuid; denied boolean := false;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+
+  perform public.set_display_note(v, 'Snacks in the lobby');
+  if (select display_note from public.sessions where id = v) <> 'Snacks in the lobby' then
+    raise exception 'FAIL: note did not stick';
+  end if;
+
+  -- Whitespace clears it, so emptying the box does what the admin expects
+  -- rather than leaving a blank line on a projector.
+  perform public.set_display_note(v, '   ');
+  if (select display_note from public.sessions where id = v) is not null then
+    raise exception 'FAIL: a whitespace note was stored';
+  end if;
+
+  perform public.set_display_note(v, 'Social at 5:30');
+  perform public.set_display_note(v, null);
+  if (select display_note from public.sessions where id = v) is not null then
+    raise exception 'FAIL: could not clear the note';
+  end if;
+
+  begin
+    perform public.set_display_note(v, repeat('x', 200));
+  exception when raise_exception then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: accepted a 200-character note'; end if;
+
+  raise notice 'PASS: admin sets, clears and is length-limited';
+end $$;
+
 \echo '=== 7. merge moves votes and is reversible ==='
 
 do $$
@@ -571,6 +619,20 @@ begin
   select count(*) into kept from public.topics where session_id = old_id;
   if kept = 0 then raise exception 'FAIL: archived session lost its topics'; end if;
   raise notice 'PASS: archive swaps sessions; % old topics still queryable', kept;
+end $$;
+
+-- A message about yesterday's social must not survive into a new session.
+do $$
+declare v uuid;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  perform public.set_display_note(v, 'Yesterday''s social');
+  perform public.reset_session(v, 'all');
+  if (select display_note from public.sessions where id = v) is not null then
+    raise exception 'FAIL: the note survived a full reset';
+  end if;
+  raise notice 'PASS: a full reset clears the message';
 end $$;
 
 \echo ''

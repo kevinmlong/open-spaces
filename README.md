@@ -299,6 +299,23 @@ Measured at 1920x1080 with an 84-character title, nothing clips anywhere:
 `npm run demo:schedule [rounds] [rooms] [voters]` drives a session all the way to
 a published schedule, which is the quickest way to look at any of these.
 
+### A message on the big screen
+
+`/admin/run` has a free-text box (120 characters) that appears on the projector
+beside the join details — for the things that come up on the day and have nothing
+to do with the app: *"Snacks in the lobby"*, *"Social at 5:30"*, *"Round 2 starts
+ten minutes late"*.
+
+The footer stays centred while the join prompt is the only thing in it. Once the
+schedule is up, or a message is set, the join details move left and the message
+takes the right, so the two never fight for the middle.
+
+It lives on the session row, so it rides the same realtime subscription as
+everything else and clears itself when the session is archived or fully reset —
+a note about yesterday's social has no business surviving into a new session.
+Whitespace counts as clearing it, so emptying the box does what you expect rather
+than leaving a blank line on a projector.
+
 ### Reset vs archive
 
 Two ways to start again, and they are not interchangeable:
