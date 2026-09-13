@@ -7,7 +7,10 @@ values (
   'Day 1 Open Spaces',
   '2026-09-16',
   'draft',
-  array['Chesapeake', 'Potomac', 'Anacostia', 'Tidal Basin', 'Rock Creek'],
+  -- Left empty on purpose: the app falls back to "Open Space 1", "Open Space 2"
+  -- and so on, which is what an unconfigured session really looks like. The
+  -- organizer names the rooms in /admin/schedule when they know the venue.
+  array[]::text[],
   array['Round 1 · 1:15pm', 'Round 2 · 2:05pm', 'Round 3 · 2:55pm']
 );
 

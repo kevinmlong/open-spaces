@@ -32,8 +32,15 @@ export function buildGrid(rankedTopics, rounds, rooms) {
   return grid
 }
 
+/**
+ * "Open Space 1", "Open Space 2"... unless the organizer has named the rooms.
+ *
+ * The default is the format the conference uses out loud, so an unnamed grid
+ * still reads correctly from the back of the room. Anything the admin types in
+ * `/admin/schedule` wins.
+ */
 export function roomName(session, roomIndex) {
-  return session?.room_names?.[roomIndex] || `Room ${roomIndex + 1}`
+  return session?.room_names?.[roomIndex] || `Open Space ${roomIndex + 1}`
 }
 
 export function roundLabel(session, roundIndex) {

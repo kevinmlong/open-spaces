@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useSessionStore } from '@/stores/session'
 import { useResultsStore } from '@/stores/results'
 import { useSessionChannel } from '@/composables/useSessionChannel'
-import { buildGrid } from '@/lib/schedule'
+import { buildGrid, roomName, roundLabel } from '@/lib/schedule'
 import BrandHeader from '@/components/shared/BrandHeader.vue'
 import AdminNav from '@/components/admin/AdminNav.vue'
 import ErrorNote from '@/components/shared/ErrorNote.vue'
@@ -33,11 +33,11 @@ const leftOut = computed(() => Math.max(0, results.rankings.length - placed.valu
 function syncLabels() {
   roomNames.value = Array.from(
     { length: rooms.value },
-    (_, i) => roomNames.value[i] ?? session.row?.room_names?.[i] ?? `Room ${i + 1}`,
+    (_, i) => roomNames.value[i] ?? session.row?.room_names?.[i] ?? roomName(null, i),
   ).slice(0, rooms.value)
   roundLabels.value = Array.from(
     { length: rounds.value },
-    (_, i) => roundLabels.value[i] ?? session.row?.round_labels?.[i] ?? `Round ${i + 1}`,
+    (_, i) => roundLabels.value[i] ?? session.row?.round_labels?.[i] ?? roundLabel(null, i),
   ).slice(0, rounds.value)
 }
 

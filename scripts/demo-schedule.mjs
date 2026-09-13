@@ -75,8 +75,9 @@ await admin.rpc('generate_schedule', {
   p_session: s.id,
   p_rounds: ROUNDS,
   p_rooms: ROOMS,
-  p_room_names: ['Chesapeake', 'Potomac', 'Anacostia', 'Tidal Basin', 'Rock Creek',
-                 'Kenilworth', 'Meridian', 'Dupont'].slice(0, ROOMS),
+  // Empty: let the "Open Space N" default render, which is what an
+  // unconfigured session looks like on the day.
+  p_room_names: [],
   p_round_labels: ['Round 1 · 1:15pm', 'Round 2 · 2:05pm', 'Round 3 · 2:55pm',
                    'Round 4 · 3:45pm'].slice(0, ROUNDS),
 })

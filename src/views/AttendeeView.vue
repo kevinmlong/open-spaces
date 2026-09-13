@@ -6,6 +6,7 @@ import { useBallotStore } from '@/stores/ballot'
 import { useAuthStore } from '@/stores/auth'
 import { useResultsStore } from '@/stores/results'
 import { useSessionChannel } from '@/composables/useSessionChannel'
+import { roomName, roundLabel } from '@/lib/schedule'
 
 import BrandHeader from '@/components/shared/BrandHeader.vue'
 import ConnectionBadge from '@/components/shared/ConnectionBadge.vue'
@@ -128,9 +129,9 @@ const mySessions = computed(() =>
             >
               <p class="font-semibold text-navy">{{ a.topics?.title }}</p>
               <p class="text-sm text-slate-600">
-                {{ session.row?.round_labels?.[a.round_index] || `Round ${a.round_index + 1}` }}
+                {{ roundLabel(session.row, a.round_index) }}
                 ·
-                {{ session.row?.room_names?.[a.room_index] || `Room ${a.room_index + 1}` }}
+                {{ roomName(session.row, a.room_index) }}
               </p>
             </li>
           </ul>

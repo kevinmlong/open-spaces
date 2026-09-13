@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assignSlot, buildGrid } from '../src/lib/schedule.js'
+import { assignSlot, buildGrid, roomName, roundLabel } from '../src/lib/schedule.js'
 
 const topics = (n) => Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, rank: i + 1 }))
 
@@ -53,5 +53,31 @@ describe('buildGrid', () => {
       expect(grid).toHaveLength(rounds)
       grid.forEach((row) => expect(row).toHaveLength(rooms))
     }
+  })
+})
+
+describe('room and round names', () => {
+  it('defaults rooms to "Open Space N", one-based', () => {
+    // The wording the conference uses out loud, so an unnamed grid still reads
+    // correctly from the back of the room.
+    expect(roomName(null, 0)).toBe('Open Space 1')
+    expect(roomName(null, 4)).toBe('Open Space 5')
+    expect(roomName({ room_names: [] }, 2)).toBe('Open Space 3')
+  })
+
+  it('lets the organizer override any room', () => {
+    const s = { room_names: ['Chesapeake', '', 'Anacostia'] }
+    expect(roomName(s, 0)).toBe('Chesapeake')
+    expect(roomName(s, 2)).toBe('Anacostia')
+    // A blank entry falls back rather than rendering an empty label.
+    expect(roomName(s, 1)).toBe('Open Space 2')
+    // Past the end of the list, too.
+    expect(roomName(s, 5)).toBe('Open Space 6')
+  })
+
+  it('defaults rounds to "Round N"', () => {
+    expect(roundLabel(null, 0)).toBe('Round 1')
+    expect(roundLabel({ round_labels: ['Round 1 · 1:15pm'] }, 0)).toBe('Round 1 · 1:15pm')
+    expect(roundLabel({ round_labels: ['Round 1 · 1:15pm'] }, 1)).toBe('Round 2')
   })
 })
