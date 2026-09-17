@@ -449,6 +449,92 @@ begin
   raise notice 'PASS: admin sets, clears and is length-limited';
 end $$;
 
+\echo '=== 6d. pins override the votes ==='
+
+do $$
+declare denied boolean := false; v uuid; lowest uuid; pins jsonb;
+begin
+  v := public.active_session_id();
+  select id into lowest from public.topic_rankings where session_id = v order by rank desc limit 1;
+  pins := jsonb_build_array(jsonb_build_object('topic_id', lowest, 'round', 0, 'room', 0));
+
+  perform pg_temp.be_attendee('aaaaaaaa-0000-0000-0000-000000000001');
+  begin
+    perform public.generate_schedule(v, 3, 2, null, null, pins);
+  exception when insufficient_privilege then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: attendee pinned a topic'; end if;
+  raise notice 'PASS: attendee cannot pin topics';
+end $$;
+
+do $$
+declare v uuid; lowest uuid; top uuid; r record; i int := 0; n int; denied boolean;
+begin
+  perform pg_temp.be_admin();
+  v := public.active_session_id();
+  select id into lowest from public.topic_rankings where session_id = v order by rank desc limit 1;
+  select id into top    from public.topic_rankings where session_id = v order by rank asc  limit 1;
+
+  perform public.generate_schedule(v, 3, 2, null, null,
+    jsonb_build_array(jsonb_build_object('topic_id', lowest, 'round', 0, 'room', 0)));
+
+  if not exists (select 1 from public.assignments
+                  where session_id = v and topic_id = lowest and pinned
+                    and round_index = 0 and room_index = 0) then
+    raise exception 'FAIL: pinned topic did not take round 0 / room 0';
+  end if;
+  select count(*) into n from public.assignments where session_id = v and topic_id = lowest;
+  if n <> 1 then raise exception 'FAIL: pinned topic placed % times', n; end if;
+  select count(*) into n from public.assignments where session_id = v;
+  if n <> 6 then raise exception 'FAIL: expected 6 assignments with a pin, got %', n; end if;
+
+  -- The rest fill the free slots in spread order: the k-th unpinned topic takes
+  -- the k-th free slot, so #1 lands where #2 would have (round 1 / room 0).
+  if not exists (select 1 from public.assignments
+                  where session_id = v and topic_id = top and not pinned
+                    and round_index = 1 and room_index = 0) then
+    raise exception 'FAIL: rank 1 did not move to the next free spread slot';
+  end if;
+  for r in
+    select a.round_index, a.room_index
+      from public.assignments a
+     where a.session_id = v and not a.pinned
+     order by a.rank
+  loop
+    i := i + 1;  -- slot i in spread order (slot 0 is pinned)
+    if r.round_index <> i % 3 or r.room_index <> i / 3 then
+      raise exception 'FAIL: unpinned #% at round %/room %', i, r.round_index, r.room_index;
+    end if;
+  end loop;
+  raise notice 'PASS: a pin takes its slot and the spread fills around it';
+
+  denied := false;
+  begin
+    perform public.generate_schedule(v, 3, 2, null, null,
+      jsonb_build_array(jsonb_build_object('topic_id', lowest, 'round', 0, 'room', 5)));
+  exception when raise_exception then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: accepted a pin outside the grid'; end if;
+
+  denied := false;
+  begin
+    perform public.generate_schedule(v, 3, 2, null, null, jsonb_build_array(
+      jsonb_build_object('topic_id', lowest, 'round', 0, 'room', 0),
+      jsonb_build_object('topic_id', top,    'round', 0, 'room', 0)));
+  exception when raise_exception then denied := true;
+  end;
+  if not denied then raise exception 'FAIL: accepted two pins in one slot'; end if;
+
+  -- A rejected pin must leave the published schedule untouched.
+  if not exists (select 1 from public.assignments where session_id = v and pinned) then
+    raise exception 'FAIL: a rejected republish wiped the schedule';
+  end if;
+  raise notice 'PASS: out-of-range and duplicate pins are rejected without side effects';
+
+  -- Back to the state later sections expect.
+  perform public.generate_schedule(v, 2, 2);
+end $$;
+
 \echo '=== 7. merge moves votes and is reversible ==='
 
 do $$

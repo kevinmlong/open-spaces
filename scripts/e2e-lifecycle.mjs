@@ -138,6 +138,25 @@ const spreadOK = asg.every(a => a.round_index === (a.rank-1)%3 && a.room_index =
 spreadOK ? ok('top 3 are in room 1 of rounds 1/2/3 — they never clash') : bad('spread is wrong')
 for (const a of asg) console.log(`    R${a.round_index+1} ${['Chesapeake','Potomac'][a.room_index]}: ${a.topics.title}`)
 
+// The organizer's override: pin the LAST-ranked topic into R1/Room 1 and
+// republish. It must take that slot, and the rest must fill around it.
+{ const last = revealed[revealed.length - 1]
+  const { error } = await admin.rpc('generate_schedule', {
+    p_session: s.id, p_rounds: 3, p_rooms: 2,
+    p_pins: [{ topic_id: last.id, round: 0, room: 0 }] })
+  if (error) bad(`pinned republish: ${error.message}`)
+  const { data: pinned } = await a3.from('assignments').select('*').order('round_index').order('room_index')
+  const cell = pinned.find(a => a.round_index === 0 && a.room_index === 0)
+  cell?.topic_id === last.id && cell.pinned
+    ? ok(`pinned #${last.rank} "${last.title}" into R1 room 1 over the votes`)
+    : bad('pin did not take its slot')
+  pinned.filter(a => a.topic_id === last.id).length === 1 && pinned.length === 6
+    ? ok('pinned topic placed once; the other slots still filled') : bad('pin broke the fill')
+  const { error: forged } = await a2.rpc('generate_schedule', {
+    p_session: s.id, p_rounds: 3, p_rooms: 2, p_pins: [{ topic_id: last.id, round: 0, room: 0 }] })
+  forged ? ok('attendee cannot pin') : bad('attendee pinned a topic!')
+}
+
 console.log('\n--- archive ---')
 const oldId = s.id
 const { data: fresh } = await admin.rpc('archive_session', { p_new_name: 'Day 2 Open Spaces' })

@@ -37,7 +37,11 @@ export const useResultsStore = defineStore('results', () => {
     assignments.value = data ?? []
   }
 
-  async function generate(rounds, rooms, roomNames = null, roundLabels = null) {
+  /**
+   * `pins` ([{ topic_id, round, room }]) are the organizer's overrides; the
+   * server fills every other slot by rank around them.
+   */
+  async function generate(rounds, rooms, roomNames = null, roundLabels = null, pins = []) {
     const session = useSessionStore()
     const { error } = await supabase.rpc('generate_schedule', {
       p_session: session.sessionId,
@@ -45,6 +49,7 @@ export const useResultsStore = defineStore('results', () => {
       p_rooms: rooms,
       p_room_names: roomNames,
       p_round_labels: roundLabels,
+      p_pins: pins,
     })
     if (error) throw error
     await session.fetchActive()

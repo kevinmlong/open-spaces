@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { assignSlot, buildGrid, roomName, roundLabel } from '../src/lib/schedule.js'
+import { assignSlot, buildGrid, outOfRangePins, roomName, roundLabel } from '../src/lib/schedule.js'
 
 const topics = (n) => Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, rank: i + 1 }))
 
@@ -53,6 +53,49 @@ describe('buildGrid', () => {
       expect(grid).toHaveLength(rounds)
       grid.forEach((row) => expect(row).toHaveLength(rooms))
     }
+  })
+})
+
+describe('pins', () => {
+  const ids = (grid) => grid.map((row) => row.map((t) => t?.id ?? null))
+
+  it('matches the unpinned grid when there are no pins', () => {
+    expect(ids(buildGrid(topics(9), 3, 3, []))).toEqual(ids(buildGrid(topics(9), 3, 3)))
+  })
+
+  it('gives a pinned topic its cell and fills the rest around it', () => {
+    // Pin the least popular topic into the slot #1 would have taken.
+    const grid = buildGrid(topics(9), 3, 3, [{ topic_id: 't9', round: 0, room: 0 }])
+    expect(grid[0][0]).toMatchObject({ id: 't9', pinned: true })
+    // #1 moves to the next free slot in spread order; everything shifts by one.
+    expect(ids(grid)).toEqual([
+      ['t9', 't3', 't6'],
+      ['t1', 't4', 't7'],
+      ['t2', 't5', 't8'],
+    ])
+  })
+
+  it('never places a pinned topic twice', () => {
+    const grid = buildGrid(topics(20), 3, 3, [
+      { topic_id: 't20', round: 2, room: 2 },
+      { topic_id: 't2', round: 0, room: 1 },
+    ])
+    const placed = grid.flat().filter(Boolean).map((t) => t.id)
+    expect(new Set(placed).size).toBe(9)
+    expect(grid[2][2].id).toBe('t20')
+    expect(grid[0][1].id).toBe('t2')
+    expect(placed.filter((id) => id === 't2')).toHaveLength(1)
+  })
+
+  it('ignores pins outside the grid and reports them', () => {
+    const pins = [
+      { topic_id: 't5', round: 0, room: 4 },
+      { topic_id: 't6', round: 1, room: 0 },
+    ]
+    const grid = buildGrid(topics(9), 3, 2, pins)
+    expect(grid.flat().filter(Boolean)).toHaveLength(6)
+    expect(outOfRangePins(pins, 3, 2)).toEqual([pins[0]])
+    expect(outOfRangePins(pins, 3, 5)).toEqual([])
   })
 })
 
