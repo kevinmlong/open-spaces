@@ -20,16 +20,40 @@ export function assignSlot(index, rounds) {
 /**
  * Build the full round x room grid for a ranked topic list.
  * Returns grid[round][room] = topic | null.
+ *
+ * `pins` is the organizer's override: [{ topic_id, round, room }]. Pinned topics
+ * take their cell outright (marked `pinned: true`); every other cell fills by
+ * walking the spread order and handing each FREE slot the next unpinned topic.
+ * The top topics therefore still avoid each other, just around the pins.
+ *
+ * Mirrors the fill in generate_schedule() (20260917000009_schedule_pins.sql).
+ * Pins outside the grid are ignored here -- see outOfRangePins().
  */
-export function buildGrid(rankedTopics, rounds, rooms) {
+export function buildGrid(rankedTopics, rounds, rooms, pins = []) {
   const grid = Array.from({ length: rounds }, () => Array.from({ length: rooms }, () => null))
+  const byId = new Map(rankedTopics.map((t) => [t.id, t]))
+  const pinnedIds = new Set()
 
-  rankedTopics.slice(0, rounds * rooms).forEach((topic, i) => {
+  for (const pin of pins) {
+    const topic = byId.get(pin.topic_id)
+    if (!topic || pin.round >= rounds || pin.room >= rooms) continue
+    grid[pin.round][pin.room] = { ...topic, pinned: true }
+    pinnedIds.add(topic.id)
+  }
+
+  const rest = rankedTopics.filter((t) => !pinnedIds.has(t.id))
+  let next = 0
+  for (let i = 0; i < rounds * rooms && next < rest.length; i++) {
     const { round, room } = assignSlot(i, rounds)
-    grid[round][room] = topic
-  })
+    if (!grid[round][room]) grid[round][room] = rest[next++]
+  }
 
   return grid
+}
+
+/** Pins that no longer fit after the organizer shrinks the grid. */
+export function outOfRangePins(pins, rounds, rooms) {
+  return pins.filter((p) => p.round >= rounds || p.room >= rooms)
 }
 
 /**
